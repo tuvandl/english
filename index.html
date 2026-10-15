@@ -1796,6 +1796,10 @@ function micInto(target,btn){
   /* tap again to stop. One recognizer object is reused for every take: iOS WebKit (Safari and Chrome on iPhone)
      often gives a silent dead session when a new object is created after the first. iPhone: no auto-restart
      (only a tap may start the mic); other browsers restart on silence until stopped. */
+  /* iPhone/iPad (Safari and Chrome are both WebKit): the page mic only works for the first take, so use the
+     keyboard's dictation instead, which is reliable: open the keyboard on the box and say how. */
+  if(Voice.env&&Voice.env.ios){try{Voice.stop()}catch(e){}target.value="";target.focus();
+    const h=document.getElementById("dictHint");if(h){h.innerHTML="Bấm biểu tượng <b>micro</b> 🎤 trên bàn phím (bàn phím <b>English</b>) rồi đọc câu. Đọc xong bấm <b>Chấm câu này</b>.";h.classList.add("note")}return}
   if(btn._mic){btn._mic.stop();return}
   const label=btn.dataset.label||(btn.dataset.label=btn.textContent);
   const ios=!!(Voice.env&&Voice.env.ios);
@@ -2289,6 +2293,7 @@ $("#shPrev").onclick=()=>{shPos=(shPos-1+shList.length)%shList.length;renderShad
 $("#shNext").onclick=()=>{shPos=(shPos+1)%shList.length;renderShadow()};
 $("#shPlay").onclick=()=>Voice.say(L.lines[shList[shPos]][1],slotOf(LEARNER));
 $("#shSlow").onclick=()=>Voice.say(L.lines[shList[shPos]][1],slotOf(LEARNER),0.75);
+if(Voice.env&&Voice.env.ios){const mb=$("#shMic");if(mb)mb.textContent="Nói (bàn phím)"}
 $("#shMic").onclick=()=>micInto($("#shInput"),$("#shMic"));
 $("#shCheck").onclick=()=>{const mb=$("#shMic");if(mb&&mb._mic)mb._mic.stop();checkShadow()};
 $("#shInput").addEventListener("keydown",e=>{if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){e.preventDefault();checkShadow()}});
