@@ -1793,23 +1793,27 @@ function blockMic(){micBlocked=true;$("#shMic").hidden=true;
 function micInto(target,btn){
   const R=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!R||micBlocked){blockMic();target.focus();return}
-  /* tap again to stop; pauses no longer end the take (phones end a session on silence, so restart until stopped) */
+  /* tap again to stop. iPhone: one continuous session started by the tap (Safari refuses restarts not made by a tap);
+     other browsers end a session on silence, so restart until stopped. Each take owns a token so an old session cannot touch a new one. */
   if(btn._mic){btn._mic.stop();return}
-  const label=btn.textContent;
-  const st={on:true,done:"",t0:Date.now()};
-  const finish=()=>{st.on=false;btn._mic=null;btn.disabled=false;btn.textContent=label};
-  btn._mic={stop:()=>{st.on=false;try{st.r&&st.r.stop()}catch(e){}finish()}};
-  const base="";target.value="";
+  const label=btn.dataset.label||(btn.dataset.label=btn.textContent);
+  const ios=!!(Voice.env&&Voice.env.ios);
+  const st={on:true,done:"",cur:"",t0:Date.now(),got:false};
+  const finish=()=>{if(btn._mic!==ctl)return;st.on=false;btn._mic=null;btn.disabled=false;btn.textContent=label};
+  const ctl={stop:()=>{st.on=false;try{st.r&&st.r.abort()}catch(e){try{st.r&&st.r.stop()}catch(_){}}finish()}};
+  btn._mic=ctl;target.value="";
   btn.textContent="Đang nghe… (bấm để dừng)";btn.disabled=false;
   const run=()=>{
+    if(!st.on)return;
     try{
       const r=new R();st.r=r;r.lang="en-US";r.interimResults=true;r.continuous=true;
-      r.onresult=e=>{let fin="",tmp="";for(let i=0;i<e.results.length;i++){const x=e.results[i];if(x.isFinal)fin+=x[0].transcript+" ";else tmp+=x[0].transcript}
-        target.value=(base+st.done+fin+tmp).replace(/\s+/g," ");st.cur=fin};
-      r.onerror=e=>{if(/not-allowed|service-not-allowed|audio-capture/.test(e&&e.error||"")){st.on=false;blockMic()}};
-      r.onend=()=>{st.done+=st.cur||"";st.cur="";if(st.on&&Date.now()-st.t0<120000)setTimeout(()=>{if(st.on)run()},150);else finish()};
+      r.onresult=e=>{if(!st.on)return;st.got=true;let fin="",tmp="";for(let i=0;i<e.results.length;i++){const x=e.results[i];if(x.isFinal)fin+=x[0].transcript+" ";else tmp+=x[0].transcript}
+        st.cur=fin+tmp;target.value=(st.done+st.cur).replace(/\s+/g," ").trimStart()};
+      r.onerror=e=>{const er=e&&e.error||"";if(/not-allowed|service-not-allowed|audio-capture/.test(er)){if(st.got||ios){finish()}else{finish();blockMic()}}};
+      r.onend=()=>{if(st.r!==r)return;st.done+=st.cur?st.cur+" ":"";st.cur="";
+        if(st.on&&!ios&&Date.now()-st.t0<120000)setTimeout(run,150);else finish()};
       r.start();
-    }catch(e){finish();blockMic();target.focus()}
+    }catch(e){finish();if(!st.got)target.focus()}
   };
   run();
 }
