@@ -1741,7 +1741,7 @@ function buildShList(){
   if(!shList.length)shList=L.lines.map((x,i)=>i);
   shPos=Math.max(0,Math.min(shPos,shList.length-1));
 }
-function renderShadow(){
+function renderShadow(){{const mb=document.getElementById("shMic");if(mb&&mb._mic)mb._mic.stop()}
   const i=shList[shPos];const ln=L.lines[i];
   $("#shPos").textContent=`CÂU ${i+1}/${L.lines.length} · ${who(ln[0]).name.toUpperCase()}`;
   $("#shTarget").textContent=ln[1];$("#shInput").value="";$("#shResult").innerHTML="";
@@ -1799,7 +1799,7 @@ function micInto(target,btn){
   const st={on:true,done:"",t0:Date.now()};
   const finish=()=>{st.on=false;btn._mic=null;btn.disabled=false;btn.textContent=label};
   btn._mic={stop:()=>{st.on=false;try{st.r&&st.r.stop()}catch(e){}finish()}};
-  let base=target.value.trim()?target.value.trim()+" ":"";
+  const base="";target.value="";
   btn.textContent="Đang nghe… (bấm để dừng)";btn.disabled=false;
   const run=()=>{
     try{
@@ -2277,10 +2277,10 @@ $("#shNext").onclick=()=>{shPos=(shPos+1)%shList.length;renderShadow()};
 $("#shPlay").onclick=()=>Voice.say(L.lines[shList[shPos]][1],slotOf(LEARNER));
 $("#shSlow").onclick=()=>Voice.say(L.lines[shList[shPos]][1],slotOf(LEARNER),0.75);
 $("#shMic").onclick=()=>micInto($("#shInput"),$("#shMic"));
-$("#shCheck").onclick=checkShadow;
+$("#shCheck").onclick=()=>{const mb=$("#shMic");if(mb&&mb._mic)mb._mic.stop();checkShadow()};
 $("#shInput").addEventListener("keydown",e=>{if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){e.preventDefault();checkShadow()}});
 $("#shResult").addEventListener("click",e=>{
-  if(e.target.closest("#shAgain")){$("#shInput").value="";$("#shResult").innerHTML="";$("#shInput").focus()}
+  if(e.target.closest("#shAgain")){const mb=$("#shMic");if(mb&&mb._mic)mb._mic.stop();$("#shInput").value="";$("#shResult").innerHTML="";$("#shInput").focus()}
   if(e.target.closest("#shGoNext")){shPos=Math.min(shList.length-1,shPos+1);renderShadow()}
 });
 
