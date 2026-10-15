@@ -1793,16 +1793,25 @@ function blockMic(){micBlocked=true;$("#shMic").hidden=true;
 function micInto(target,btn){
   const R=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!R||micBlocked){blockMic();target.focus();return}
+  /* tap again to stop; pauses no longer end the take (phones end a session on silence, so restart until stopped) */
+  if(btn._mic){btn._mic.stop();return}
   const label=btn.textContent;
-  try{
-    const r=new R();r.lang="en-US";r.interimResults=true;r.continuous=false;
-    const base=target.value.trim()?target.value.trim()+" ":"";
-    btn.textContent="Đang nghe…";btn.disabled=true;
-    r.onresult=e=>{let t="";for(const x of e.results)t+=x[0].transcript;target.value=base+t};
-    r.onerror=e=>{if(/not-allowed|service-not-allowed|audio-capture/.test(e&&e.error||""))blockMic()};
-    r.onend=()=>{btn.disabled=false;btn.textContent=label};
-    r.start();
-  }catch(e){btn.disabled=false;btn.textContent=label;blockMic();target.focus()}
+  const st={on:true,done:"",t0:Date.now()};
+  const finish=()=>{st.on=false;btn._mic=null;btn.disabled=false;btn.textContent=label};
+  btn._mic={stop:()=>{st.on=false;try{st.r&&st.r.stop()}catch(e){}finish()}};
+  let base=target.value.trim()?target.value.trim()+" ":"";
+  btn.textContent="Đang nghe… (bấm để dừng)";btn.disabled=false;
+  const run=()=>{
+    try{
+      const r=new R();st.r=r;r.lang="en-US";r.interimResults=true;r.continuous=true;
+      r.onresult=e=>{let fin="",tmp="";for(let i=0;i<e.results.length;i++){const x=e.results[i];if(x.isFinal)fin+=x[0].transcript+" ";else tmp+=x[0].transcript}
+        target.value=(base+st.done+fin+tmp).replace(/\s+/g," ");st.cur=fin};
+      r.onerror=e=>{if(/not-allowed|service-not-allowed|audio-capture/.test(e&&e.error||"")){st.on=false;blockMic()}};
+      r.onend=()=>{st.done+=st.cur||"";st.cur="";if(st.on&&Date.now()-st.t0<120000)setTimeout(()=>{if(st.on)run()},150);else finish()};
+      r.start();
+    }catch(e){finish();blockMic();target.focus()}
+  };
+  run();
 }
 
 /* ---------- 3. vocabulary ---------- */
